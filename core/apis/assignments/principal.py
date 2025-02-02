@@ -2,7 +2,9 @@ from flask import Blueprint
 from core import db
 from core.apis import decorators
 from core.apis.responses import APIResponse
-from core.models.assignments import Assignment
+from core.models.assignments import Assignment,AssignmentStateEnum
+from core.libs import helpers, assertions
+
 
 from .schema import AssignmentSchema, AssignmentGradeSchema
 principal_assignments_resources = Blueprint('principal_assignments_resources', __name__)
@@ -23,6 +25,17 @@ def list_assignments(p):
 def grade_assignment(p, incoming_payload):
     """Grade an assignment"""
     grade_assignment_payload = AssignmentGradeSchema().load(incoming_payload)
+
+
+    # In test case Assignment with id=5 is Graded 
+    assignment = Assignment.get_by_id(grade_assignment_payload.id)
+
+    if not assignment:
+        assertions.base_assert(400,"Assignment not found")
+
+    if assignment.state == AssignmentStateEnum.DRAFT:
+        assertions.base_assert(400,"Assignment is in Draft state, it cannot be graded by principal")
+
 
     graded_assignment = Assignment.mark_grade(
         _id=grade_assignment_payload.id,
